@@ -108,6 +108,8 @@ Windows系统直接打开同目录下的`win_run.bat`就可以定时执行了，
 
 ## <h2 id="b2">2. 安装Python</h2>
 打开上一步下载的安装包，按照如下图所示勾选好项目，点击安装等待安装完成即可
+
+↓ 此处应有配图，若无法看到图片，[请点此访问国内仓库地址](https://gitee.com/cndiandian/weibo)
 ![](http://qiniu.xshwy.cn/md/pyinstall.jpg)
 
 ## <h2 id="b3">3. Telegram创建BOT & 获取token</h2>
