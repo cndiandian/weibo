@@ -125,7 +125,7 @@ class Weibo:
 
             weibo['title'] = BeautifulSoup(item['mblog']['text'].replace('<br />', '\n'), 'html.parser').get_text()
 
-            if item['mblog']['weibo_position'] == 3:  # 如果状态为3表示转发微博，附加上转发链，状态1为原创微博
+            if item['mblog'].get('weibo_position') == 3:  # 如果状态为3表示转发微博，附加上转发链，状态1为原创微博
                 retweet = item['mblog']['retweeted_status']
                 try:
                     weibo['title'] = f"{weibo['title']}//@{retweet['user']['screen_name']}:{retweet['raw_text']}"
