@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import wget
+import json
 import sqlite3
 import configparser
 from bs4 import BeautifulSoup
@@ -48,6 +49,20 @@ class Weibo:
 
         self.SESSION.post(url, data=data, proxies=self.PROXIES)
 
+    def send_telegram_photos(self, pics):
+        url = f'https://api.telegram.org/bot{self.TELEGRAM_BOT_TOKEN}/sendMediaGroup'
+        params = {
+            'chat_id': self.TELEGRAM_CHAT_ID,
+            'media': [],
+        }
+        for pic in pics:
+            params['media'].append({'type': 'photo', 'media': pic})
+        params['media'] = json.dumps(params['media'])
+        result = self.SESSION.post(url, data=params, proxies=self.PROXIES)
+        if result.status_code != 200: # 如果分组发送失败 则单独发送图片
+            for pic in pics:
+                self.send_telegram_photo(pic)
+
     def parse_weibo(self, weibo):
         """
         检查当前微博是否已处理过，如果没处理过则发送博文以及配图到Telegram
@@ -69,8 +84,16 @@ class Weibo:
             )
 
             # 把图片url发送到Telegram中，可以第一时间在Telegram中收到推送
-            for pic in weibo['pics']:
-                self.send_telegram_photo(pic)
+            pics = weibo['pics']
+            if len(pics) > 0:
+                if len(pics) <= 2: # 如果配图小于2张 则一张一张独立发送
+                    for pic in pics:
+                        self.send_telegram_photo(pics)
+                elif len(pics) > 10: # 如果配图大于10张 则分2组发送
+                    self.send_telegram_photos(pics[0 : int(len(pics)/2)])
+                    self.send_telegram_photos(pics[int(len(pics)/2):])
+                else:
+                    self.send_telegram_photos(pics)
 
             # 配图发送到Telegram毕后，将配图独立保存到本地一份
             for pic in weibo['pics']:
@@ -108,7 +131,21 @@ class Weibo:
                 print('【错误】代理无法访问到电报服务器')
         except:
             print('【错误】代理无法访问到电报服务器')
-        
+
+    def get_weibo_detail(self, bid):
+        url = f'https://m.weibo.cn/statuses/show?id={bid}'
+        detail = self.SESSION.get(url).json()
+        weibo = {}
+        weibo['title'] = BeautifulSoup(detail['data']['text'].replace('<br />', '\n'), 'html.parser').get_text()
+        weibo['pics'] = [pic['large']['url'] for pic in detail['data']['pics']]
+        weibo['link'] = self.get_pc_url(bid)
+        self.parse_weibo(weibo)
+
+    def get_pc_url(self, bid):
+        return 'https://weibo.com/{weibo_id}/{uri}'.format(
+            weibo_id = self.WEIBO_ID,
+            uri = bid
+        )
 
     def run(self):
         print(time.strftime('%Y-%m-%d %H:%M:%S 执行完毕', time.localtime()))
@@ -122,6 +159,9 @@ class Weibo:
 
         for item in weibo_items:
             weibo = {}
+            if item['mblog']['isLongText']: # 如果博文包含全文 则去解析完整微博
+                self.get_weibo_detail(item['mblog']['bid'])
+                continue
 
             weibo['title'] = BeautifulSoup(item['mblog']['text'].replace('<br />', '\n'), 'html.parser').get_text()
 
@@ -137,9 +177,7 @@ class Weibo:
             except:
                 weibo['pics'] = []
 
-            short_url = item['scheme']
-            short_url = short_url[short_url.rindex('/') + 1:short_url.index('?')]
-            weibo['link'] = f'https://weibo.com/{self.WEIBO_ID}/{short_url}'
+            weibo['link'] = self.get_pc_url(item['mblog']['bid'])
 
             self.parse_weibo(weibo)
 
