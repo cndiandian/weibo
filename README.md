@@ -134,7 +134,7 @@ Windows系统直接打开同目录下的`win_run.bat`就可以定时执行了，
 ![](http://qiniu.xshwy.cn/md/weiboid.jpg)
 
 ## <h2 id="b6">6. 获取Telegram频道数字ID</h2>
-1. 在已添加刚才创建bot的频道里任意发送一条消息
+1. 在已添加刚才创建bot的频道里at这个bot任意发送一条消息
 2. 访问：https://api.telegram.org/bot+刚才创建bot时申请的token+/getupdates
 3. 在访问结果里找到```"chat":{"id":-1001385856968, "title":……}```，其中的`-1001385856968`就是当前频道的数字ID
 
