@@ -137,7 +137,9 @@ class Weibo:
         detail = self.SESSION.get(url).json()
         weibo = {}
         weibo['title'] = BeautifulSoup(detail['data']['text'].replace('<br />', '\n'), 'html.parser').get_text()
-        weibo['pics'] = [pic['large']['url'] for pic in detail['data']['pics']]
+        weibo['pics'] = []
+        if 'pics' in detail['data']: # 判断博文中是否有配图，如果有配图则做解析
+            weibo['pics'] = [pic['large']['url'] for pic in detail['data']['pics']]
         weibo['link'] = self.get_pc_url(bid)
         self.parse_weibo(weibo)
 
