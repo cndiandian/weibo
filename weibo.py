@@ -97,7 +97,7 @@ class Weibo:
 
             # 配图发送到Telegram毕后，将配图独立保存到本地一份
             for pic in weibo['pics']:
-                filename = pic[pic.rfind('/') + 1:]
+                filename = pic.split('/')[-1].split('?')[0]
                 filename = os.path.join(self.BASE_DIR, 'images', filename)
                 wget.download(pic, out=filename)
 
