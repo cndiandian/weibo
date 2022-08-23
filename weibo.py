@@ -11,6 +11,9 @@ from requests_html import HTMLSession
 
 class Weibo:
 
+    def plog(self,content):
+        print('{} {}'.format(time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time())), content))
+
     def __init__(self):
         self.BASE_DIR = os.path.split(os.path.realpath(__file__))[0]
         config = configparser.ConfigParser()
@@ -76,8 +79,9 @@ class Weibo:
 
         if result[0] <= 0:
             self.send_telegram_message(
-                '{}{}'.format(
+                '{}@{}:{}'.format(
                     f"[{len(weibo['pics'])}图] " if weibo['pics'] else '',
+                    weibo['nickname'],
                     weibo['title'],
                 ),
                 weibo['link']
@@ -137,51 +141,59 @@ class Weibo:
         detail = self.SESSION.get(url).json()
         weibo = {}
         weibo['title'] = BeautifulSoup(detail['data']['text'].replace('<br />', '\n'), 'html.parser').get_text()
+        weibo['nickname'] = detail['data']['user']['screen_name']
+        weibo_id = detail['data']['user']['id']
         weibo['pics'] = []
         if 'pics' in detail['data']: # 判断博文中是否有配图，如果有配图则做解析
             weibo['pics'] = [pic['large']['url'] for pic in detail['data']['pics']]
-        weibo['link'] = self.get_pc_url(bid)
+        weibo['link'] = self.get_pc_url(weibo_id, bid)
         self.parse_weibo(weibo)
 
-    def get_pc_url(self, bid):
+    def get_pc_url(self, weibo_id, bid):
         return 'https://weibo.com/{weibo_id}/{uri}'.format(
-            weibo_id = self.WEIBO_ID,
+            weibo_id = weibo_id,
             uri = bid
         )
 
     def run(self):
-        print(time.strftime('%Y-%m-%d %H:%M:%S 执行完毕', time.localtime()))
+        self.plog('开始运行>>>')
 
-        url = f'https://m.weibo.cn/api/container/getIndex?containerid=107603{self.WEIBO_ID}'
-
-        try:
-            weibo_items = self.SESSION.get(url).json()['data']['cards'][::-1]
-        except:
-            print('    |-访问url出错了')
-
-        for item in weibo_items:
-            weibo = {}
-            if item['mblog']['isLongText']: # 如果博文包含全文 则去解析完整微博
-                self.get_weibo_detail(item['mblog']['bid'])
-                continue
-
-            weibo['title'] = BeautifulSoup(item['mblog']['text'].replace('<br />', '\n'), 'html.parser').get_text()
-
-            if item['mblog'].get('weibo_position') == 3:  # 如果状态为3表示转发微博，附加上转发链，状态1为原创微博
-                retweet = item['mblog']['retweeted_status']
-                try:
-                    weibo['title'] = f"{weibo['title']}//@{retweet['user']['screen_name']}:{retweet['raw_text']}"
-                except:
-                    weibo['title'] = f"{weibo['title']}//转发原文不可见，可能已被删除"
+        weibo_ids = self.WEIBO_ID.split(',')
+        for weibo_id in weibo_ids:
+            self.plog(f'    |-开始获取 {weibo_id} 的微博')
+            url = f'https://m.weibo.cn/api/container/getIndex?containerid=107603{weibo_id}'
 
             try:
-                weibo['pics'] = [pic['large']['url'] for pic in item['mblog']['pics']]
+                weibo_items = self.SESSION.get(url).json()['data']['cards'][::-1]
             except:
-                weibo['pics'] = []
+                self.plog('    |-访问url出错了')
 
-            weibo['link'] = self.get_pc_url(item['mblog']['bid'])
+            for item in weibo_items:
+                weibo = {}
+                if item['mblog']['isLongText']: # 如果博文包含全文 则去解析完整微博
+                    self.get_weibo_detail(item['mblog']['bid'])
+                    continue
 
-            self.parse_weibo(weibo)
+                weibo['title'] = BeautifulSoup(item['mblog']['text'].replace('<br />', '\n'), 'html.parser').get_text()
+                weibo['nickname'] = item['mblog']['user']['screen_name']
+
+                if item['mblog'].get('weibo_position') == 3:  # 如果状态为3表示转发微博，附加上转发链，状态1为原创微博
+                    retweet = item['mblog']['retweeted_status']
+                    try:
+                        weibo['title'] = f"{weibo['title']}//@{retweet['user']['screen_name']}:{retweet['raw_text']}"
+                    except:
+                        weibo['title'] = f"{weibo['title']}//转发原文不可见，可能已被删除"
+
+                try:
+                    weibo['pics'] = [pic['large']['url'] for pic in item['mblog']['pics']]
+                except:
+                    weibo['pics'] = []
+
+                weibo['link'] = self.get_pc_url(weibo_id, item['mblog']['bid'])
+
+                self.parse_weibo(weibo)
+            self.plog(f'    |-获取结束 {weibo_id} 的微博')
+        self.plog('<<<运行结束\n')
 
 
 if __name__ == '__main__':
