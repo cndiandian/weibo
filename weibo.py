@@ -170,8 +170,11 @@ class Weibo:
 
             for item in weibo_items:
                 weibo = {}
-                if item['mblog']['isLongText']: # 如果博文包含全文 则去解析完整微博
-                    self.get_weibo_detail(item['mblog']['bid'])
+                try:
+                    if item['mblog']['isLongText']: # 如果博文包含全文 则去解析完整微博
+                        self.get_weibo_detail(item['mblog']['bid'])
+                        continue
+                except:
                     continue
 
                 weibo['title'] = BeautifulSoup(item['mblog']['text'].replace('<br />', '\n'), 'html.parser').get_text()
