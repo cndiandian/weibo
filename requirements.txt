@@ -1,3 +1,6 @@
 wget==3.2
 requests-html==0.10.0
 beautifulsoup4==4.8.2
+lxml==4.9.3
+flake8==7.0.0
+pytest==8.2.1

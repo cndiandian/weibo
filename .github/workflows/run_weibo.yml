@@ -1,0 +1,48 @@
+name: run_weibo
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+env:
+  ASPNETCORE_ENVIRONMENT: ${{secrets.ENV}} # 运行环境
+  TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+  TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+  WEIBO_ID: ${{ secrets.WEIBO_ID }}
+  PROXY: ${{ secrets.PROXY }}
+
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: Production
+    
+    
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.9' # 你想要使用的 Python 版本
+        
+    - name: Install Dependencies
+      run: |
+        pip install --upgrade pip setuptools
+        pip install -r requirements.txt
+        pip install lxml_html_clean
+
+    - name: Run Python Script
+      run: python weibo.py
+
+    - name: Update JSON file
+      run: python update_sql.py
